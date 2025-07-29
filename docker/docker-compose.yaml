@@ -1,0 +1,51 @@
+name: exchange-rate-app
+
+networks:
+  app-tier:
+    driver: bridge
+
+services:
+  phpfpm:
+    build: ./php-fpm
+    networks:
+      - app-tier
+    volumes:
+      - ../backend:/app
+
+  nginx:
+    image: bitnami/nginx:1.29.0
+    depends_on:
+      - phpfpm
+    networks:
+      - app-tier
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/server_block.conf:/opt/bitnami/nginx/conf/server_blocks/yourapp.conf:ro
+      - ../backend:/app
+
+  mysql:
+    image: bitnami/mysql:9.3.0
+    networks:
+      - app-tier
+    environment:
+      - MYSQL_ROOT_PASSWORD=Sup3rStron0P4ssw0rd
+      - MYSQL_DATABASE=exchange_rate_db
+      - MYSQL_USER=exchange_user
+      - MYSQL_PASSWORD=Stron0P4ssw0rd
+    volumes:
+      - mysql_data:/bitnami/mysql
+
+  redis:
+    image: bitnami/redis:8.0.3
+    networks:
+      - app-tier
+    environment:
+      - REDIS_PASSWORD=Sup3rStron0P4ssw0rd
+    volumes:
+      - redis_data:/bitnami/redis
+
+volumes:
+  mysql_data:
+  redis_data:
