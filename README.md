@@ -29,8 +29,8 @@ Follow these steps to get the backend development environment up and running:
     Navigate to your desired directory in your terminal and clone the project:
 
     ```bash
-    git clone <repository-url> # Replace with your actual repository URL
-    cd exchange-rate-application # Navigate into your project's root directory
+    git clone https://github.com/eddyyxxyy/exchange_rate.git
+    cd exchange-rate
     ```
 
 3.  **Project Structure:**
@@ -38,22 +38,34 @@ Follow these steps to get the backend development environment up and running:
 
     ```
     exchange-rate-application/
+    │
     ├── backend/                 # Contains the PHP backend application files
+    │   ├── .env                 # Environment variables used by both Docker and the PHP app
+    │   ├── bootstrap/           # Application initialization
+    │   │   └── ...
+    │   ├── config/
+    │   │   └── app.php
     │   ├── public/
     │   │   └── index.php
     │   ├── composer.json        # Backend's Composer configuration
-    │   └── ... (your PHP application source code)
+    │   └── src/
+    │   │   └── ... (Application source code)
+    │
+    ├── frontend/                 # Contains the frontend application files
+    │   └──  ... (Application source code)
+    │
     ├── docker/                  # Docker-related configurations
     │   ├── docker-compose.yaml  # Main Docker Compose orchestration file
-    │   ├── php-fpm-custom/      # Custom Dockerfile for PHP-FPM service
+    │   ├── php-fpm/      # Custom Dockerfile for PHP-FPM service
     │   │   └── Dockerfile
     │   └── nginx/               # Nginx server configurations
     │       └── server_block.conf
+    │
     └── README.md
     └── LICENSE.md
     ```
 
-4.  **`docker/php-fpm-custom/Dockerfile` Content:**
+4.  **`docker/php-fpm/Dockerfile` Content:**
     This custom Dockerfile extends the base Bitnami PHP-FPM image, installing essential build tools and the `phpredis` extension required by the backend.
 
     ```dockerfile
@@ -94,26 +106,35 @@ Follow these steps to get the backend development environment up and running:
         listen 80;
         server_name localhost;
         index index.php;
-        root /app/public; # IMPORTANT: This path is inside the Docker container and points to your backend's public directory
+        root /app/public;
 
+        # SPA frontend (React, etc.)
         location / {
-            # Try to serve files directly, then pass the request to index.php for Slim framework routing
+            try_files $uri /index.html;
+        }
+
+        # Slim PHP
+        location = /api {
+            return 301 /api/;
+        }
+
+        location ^~ /api/ {
             try_files $uri /index.php$is_args$args;
         }
 
-        location ~ \.php {
-            # Pass PHP requests to the PHP-FPM service
-            try_files $uri =404; # Ensures that only existing PHP files are processed
+        # PHP handler
+        location ~ \.php$ {
+            try_files $uri =404;
             fastcgi_split_path_info ^(.+\.php)(/.+)$;
             include fastcgi_params;
             fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
             fastcgi_param SCRIPT_NAME $fastcgi_script_name;
             fastcgi_index index.php;
-            fastcgi_pass phpfpm:9000; # 'phpfpm' is the service name in docker-compose.yaml
+            fastcgi_pass phpfpm:9000;
         }
 
-        # Deny access to sensitive files (e.g., .env files)
-        location ~ /\.env {
+        # Security
+        location ~ /\.(?!well-known).* {
             deny all;
         }
     }
@@ -127,83 +148,71 @@ Follow these steps to get the backend development environment up and running:
 
     networks:
       app-tier:
-        driver: bridge # Defines a custom network for inter-service communication
+        driver: bridge
 
     services:
       phpfpm:
-        build: ./php-fpm-custom # Build context: looks for Dockerfile in this directory
+        build: ./php-fpm
+        depends_on:
+          - mysql
+          - redis
         networks:
           - app-tier
         volumes:
-          - ../backend:/app # Mounts your local 'backend' directory into '/app' in the container
-        environment:
-          - PHP_ENABLE_OPCACHE=no           # Disable OPcache for instant code changes in development
-          - PHP_DATE_TIMEZONE=America/Sao_Paulo # Set your desired timezone
-          - PHP_DISPLAY_ERRORS=On           # Show PHP errors in development (turn off in production!)
-          - PHP_EXPOSE_PHP=no               # Hide PHP version in HTTP headers (good practice)
-          - PHP_MEMORY_LIMIT=256M           # Increase PHP memory limit if needed
+          - ../backend:/app
+        env_file: ../backend/.env
 
       nginx:
-        image: bitnami/nginx:latest
+        image: bitnami/nginx:1.29.0
         depends_on:
-          - phpfpm # Ensure PHP-FPM starts before Nginx
+          - phpfpm
         networks:
           - app-tier
         ports:
-          - "80:80"   # Map host port 80 to container port 80 (HTTP)
-          - "443:443" # Map host port 443 to container port 443 (HTTPS)
+          - "80:80"
+          - "443:443"
         volumes:
-          # Mount your custom Nginx server block configuration
           - ./nginx/server_block.conf:/opt/bitnami/nginx/conf/server_blocks/yourapp.conf:ro
-          - ../backend:/app # Nginx also needs access to your application files to serve PHP
+          - ../backend:/app
 
       mysql:
-        image: bitnami/mysql:latest
+        image: bitnami/mysql:9.3.0
         networks:
           - app-tier
-        environment:
-          - MYSQL_ROOT_PASSWORD='Sup3r$tron0P4ssw0rd' # !! IMPORTANT: CHANGE THIS PASSWORD IN PRODUCTION !!
-          - MYSQL_DATABASE=exchange_rate_db
-          - MYSQL_USER=exchange_user
-          - MYSQL_PASSWORD='$tron0P4ssw0rd' # !! IMPORTANT: CHANGE THIS PASSWORD IN PRODUCTION !!
         volumes:
-          - mysql_data:/bitnami/mysql # Persistent volume for MySQL data to prevent data loss
+          - mysql_data:/bitnami/mysql
+        env_file: ../backend/.env
+        environment:
+          - MYSQL_ROOT_PASSWORD=Sup3rStron0P4ssw0rd
+          - MYSQL_DATABASE=${DB_NAME}
+          - MYSQL_USER=${DB_USER}
+          - MYSQL_PASSWORD=${DB_PASS}
 
       redis:
-        image: bitnami/redis:latest
+        image: bitnami/redis:8.0.3
         networks:
           - app-tier
-        environment:
-          - REDIS_PASSWORD='Sup3r$tron0P4ssw0rd' # !! IMPORTANT: CHANGE THIS PASSWORD IN PRODUCTION !!
         volumes:
-          - redis_data:/bitnami/redis # Persistent volume for Redis data
+          - redis_data:/bitnami/redis
+        env_file: ../backend/.env
+        environment:
+          - REDIS_PASSWORD=${REDIS_AUTH}
 
     volumes:
-      mysql_data: # Define named volume for MySQL persistence
-      redis_data: # Define named volume for Redis persistence
+      mysql_data:
+      redis_data:
     ```
 
 7.  **Build and Run Docker Containers:**
-    From your project's root directory (where the `docker` folder is located), execute the following commands to build your custom PHP-FPM image and start all services:
+    From your project's root directory (where the `docker` folder is located), execute the following command to build and start all services:
 
     ```bash
-    docker compose -f ./docker/docker-compose.yaml down          # Stop and remove any previously running containers
-    docker compose -f ./docker/docker-compose.yaml build phpfpm # Build the custom PHP-FPM image
-    docker compose -f ./docker/docker-compose.yaml up -d        # Start all defined services in detached mode
+    docker compose --env-file backend/.env -f docker/docker-compose.yaml up --build -d
     ```
 
-8.  **Install PHP Dependencies (Composer):**
-    Once your `phpfpm` container is running, install your backend's PHP dependencies using Composer:
-
-    ```bash
-    docker compose -f ./docker/docker-compose.yaml exec phpfpm composer install -d /app
-    ```
-    The `-d /app` flag tells Composer to run inside the `/app` directory, which is where your `backend` code is mounted in the `phpfpm` container.
-
-9.  **Access the Backend API:**
+8.  **Access the Backend API:**
     Your backend API should now be accessible via Nginx on your local machine.
-    * **Base API Endpoint:** `http://localhost/` (or specific API routes you've defined in Slim).
-    * **PHP Info (for verification):** For development purposes, you can create a temporary `phpinfo.php` file in your `backend/public/` directory with the content `<?php phpinfo();`. Then, visit `http://localhost/phpinfo.php` in your browser. **Remember to remove this file immediately after verification for security reasons.**
+    * **Base API Endpoint:** `http://localhost/api` (or specific API routes you've defined in Slim).
 
 ---
 
@@ -223,26 +232,24 @@ This section provides more specific information about the PHP backend applicatio
 
 * `backend/src/`: Contains your application's source code, following the `App\` namespace as defined in `composer.json`.
 * `backend/public/`: The web server's document root, containing `index.php` as the entry point for the Slim application.
+* `backend/bootstrap/`: The web server's bootstraping used to define all app routes, deps and more.
+* `backend/config/`: The web server's configuration directives.
 * `backend/vendor/`: Composer's directory for installed third-party dependencies (managed by Docker).
 
-### Dependencies (from `composer.json`):
+### Dependencies (from `composer.json` and `php`):
 
-* `slim/slim: 4.*`
-* `slim/psr7: ^1.7`
-* **phpredis extension:** Installed via `pecl` in the `php-fpm-custom/Dockerfile` for Redis integration.
+
+* "slim/slim": "4.*",
+* "slim/psr7": "^1.7",
+* "php-di/slim-bridge": "^3.4",
+* "vlucas/phpdotenv": "^5.6"
+* **mysqli extension:** Enabled via php.ini.
+* **pdo_mysql extension:** Enabled via php.ini.
+* **php_redis extension:** Installed via `pecl` in the `php-fpm/Dockerfile` for Redis integration.
 
 ## 3. Frontend Application (Planned)
 
-This project is planned to include a dedicated frontend application that will consume the backend API to provide a user interface for exchange rate data.
-
-### Planned Technologies:
-
-* **React:** The core JavaScript library for building user interfaces.
-* **UI Framework/Library (Under Consideration):**
-    * **TanStack Start:** A full-stack meta-framework for React, offering advanced data fetching, routing, and potential server-side rendering capabilities.
-    * *Alternatively, a more traditional **client-side rendering (CSR) React setup** using a lighter router (like TanStack Router only) is also being evaluated based on final project requirements and complexity.*
-
-The frontend will reside in a separate `frontend/` directory at the project root and will be integrated into the Docker Compose setup for consistent development. Further details will be added to this `README.md` once the frontend technology stack is finalized.
+Will be located in /frontend, likely using React + TanStack Router.
 
 ---
 

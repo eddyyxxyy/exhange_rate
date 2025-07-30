@@ -1,14 +1,12 @@
 <?php
 
-use DI\Bridge\Slim\Bridge;
-use App\Controllers\HomeController;
+declare(strict_types=1);
+
+use Slim\App;
 
 require __DIR__ . '/../vendor/autoload.php';
 
-$app = Bridge::create();
-
-$app->setBasePath('/api');
-
-$app->get('/', [HomeController::class, 'index']);
+/** @var App $app */
+$app = require __DIR__ . '/../bootstrap/app.php';
 
 $app->run();

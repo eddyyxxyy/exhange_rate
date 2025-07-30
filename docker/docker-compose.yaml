@@ -7,10 +7,14 @@ networks:
 services:
   phpfpm:
     build: ./php-fpm
+    depends_on:
+      - mysql
+      - redis
     networks:
       - app-tier
     volumes:
       - ../backend:/app
+    env_file: ../backend/.env
 
   nginx:
     image: bitnami/nginx:1.29.0
@@ -29,22 +33,24 @@ services:
     image: bitnami/mysql:9.3.0
     networks:
       - app-tier
-    environment:
-      - MYSQL_ROOT_PASSWORD=Sup3rStron0P4ssw0rd
-      - MYSQL_DATABASE=exchange_rate_db
-      - MYSQL_USER=exchange_user
-      - MYSQL_PASSWORD=Stron0P4ssw0rd
     volumes:
       - mysql_data:/bitnami/mysql
+    env_file: ../backend/.env
+    environment:
+      - MYSQL_ROOT_PASSWORD=Sup3rStron0P4ssw0rd
+      - MYSQL_DATABASE=${DB_NAME}
+      - MYSQL_USER=${DB_USER}
+      - MYSQL_PASSWORD=${DB_PASS}
 
   redis:
     image: bitnami/redis:8.0.3
     networks:
       - app-tier
-    environment:
-      - REDIS_PASSWORD=Sup3rStron0P4ssw0rd
     volumes:
       - redis_data:/bitnami/redis
+    env_file: ../backend/.env
+    environment:
+      - REDIS_PASSWORD=${REDIS_AUTH}
 
 volumes:
   mysql_data:
