@@ -1,6 +1,7 @@
 <?php
 
 return [
+    'app_env' => $_ENV['APP_ENV'] ?? 'local',
     'debug' => ($_ENV['APP_DEBUG'] ?? 'false') === 'true',
 
     'db' => [

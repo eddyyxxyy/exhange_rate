@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Config;
 
 class AppConfig
@@ -16,7 +18,6 @@ class AppConfig
      */
     public function get(string $key, mixed $default = null): mixed
     {
-        // Ex: get('db.host')
         $segments = explode('.', $key);
         $value = $this->config;
 

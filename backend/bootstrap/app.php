@@ -1,16 +1,26 @@
 <?php
 
-use DI\ContainerBuilder;
-use DI\Bridge\Slim\Bridge;
-use Dotenv\Dotenv;
+declare(strict_types=1);
 
-require_once __DIR__ . '/../vendor/autoload.php';
+use Dotenv\Dotenv;
+use DI\ContainerBuilder;
+use App\Config\AppConfig;
+use DI\Bridge\Slim\Bridge;
 
 $dotenv = Dotenv::createImmutable(__DIR__ . '/../');
 $dotenv->load();
 
 $containerBuilder = new ContainerBuilder();
+
 $containerBuilder->addDefinitions(__DIR__ . '/container.php');
+
+$tempContainer = $containerBuilder->build();
+$appConfig = $tempContainer->get(AppConfig::class);
+
+if ($appConfig->get('app_env') === 'production') {
+    $containerBuilder->enableCompilation(__DIR__ . '/../cache/tmp');
+    $containerBuilder->writeProxiesToFile(true, __DIR__ . '/../cache/tmp/proxies');
+}
 
 $container = $containerBuilder->build();
 

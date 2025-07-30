@@ -5,19 +5,28 @@ use Psr\Http\Message\ResponseFactoryInterface;
 use Slim\Psr7\Factory\ResponseFactory;
 use App\Config\AppConfig;
 use Redis;
+use function DI\factory;
+use function DI\autowire;
+use function DI\get;
 
 return [
+    'config.app' => require __DIR__ . '/../config/app.php',
 
-    AppConfig::class => fn() => new AppConfig(require __DIR__ . '/../config/app.php'),
+    AppConfig::class => autowire()
+        ->constructorParameter('config', get('config.app')),
 
-    Redis::class => function (ContainerInterface $c): Redis {
-        $config = $c->get(AppConfig::class)->get('redis');
+    Redis::class => factory(function (ContainerInterface $c): Redis {
+        /** @var AppConfig $appConfig */
+        $appConfig = $c->get(AppConfig::class);
+        $config = $appConfig->get('redis');
+
         $redis = new Redis();
         $redis->connect($config['host'], $config['port']);
-        $redis->auth($config['auth']);
+        if (!empty($config['auth'])) {
+            $redis->auth($config['auth']);
+        }
         return $redis;
-    },
+    }),
 
-    ResponseFactoryInterface::class => fn() => new ResponseFactory(),
-
+    ResponseFactoryInterface::class => autowire(ResponseFactory::class),
 ];
