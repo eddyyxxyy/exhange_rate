@@ -3,11 +3,6 @@
     "description": "Backend to provide the latest and historical exchange rate for the given currency.",
     "type": "project",
     "license": "MIT",
-    "autoload": {
-      "psr-4": {
-        "App\\": "src/"
-      }
-    },
     "authors": [
         {
             "name": "Edson Pimenta",
@@ -16,11 +11,33 @@
             "role": "Junior FullStack Developer"
         }
     ],
+    "scripts": {
+      "test": "./vendor/bin/pest --coverage"
+    },
+    "autoload": {
+      "psr-4": {
+        "App\\": "src/"
+      }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Tests\\": "tests/"
+        }
+    },
     "minimum-stability": "stable",
     "require": {
         "slim/slim": "4.*",
         "slim/psr7": "^1.7",
         "php-di/slim-bridge": "^3.4",
         "vlucas/phpdotenv": "^5.6"
+    },
+    "require-dev": {
+        "pestphp/pest": "^3.8",
+        "mockery/mockery": "^1.6"
+    },
+    "config": {
+        "allow-plugins": {
+            "pestphp/pest-plugin": true
+        }
     }
 }

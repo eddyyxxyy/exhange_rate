@@ -1,0 +1,14 @@
+name: exchange-rate-app-tests
+
+services:
+  redis_test:
+    image: redis:latest
+    container_name: exchange_rate_redis_test
+    ports:
+      - "6380:6379"
+    command: redis-server --appendonly yes --requirepass test_password
+    volumes:
+      - redis_test_data:/data
+
+volumes:
+  redis_test_data:
