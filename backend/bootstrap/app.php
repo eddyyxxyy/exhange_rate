@@ -26,6 +26,8 @@ $container = $containerBuilder->build();
 
 $app = Bridge::create($container);
 
+$app->addErrorMiddleware($appConfig->get('debug'), true, true);
+
 $app->setBasePath('/api');
 
 (require __DIR__ . '/routes.php')($app);

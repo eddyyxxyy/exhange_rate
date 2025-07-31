@@ -29,7 +29,9 @@
         "slim/slim": "4.*",
         "slim/psr7": "^1.7",
         "php-di/slim-bridge": "^3.4",
-        "vlucas/phpdotenv": "^5.6"
+        "vlucas/phpdotenv": "^5.6",
+        "illuminate/database": "^12.21",
+        "illuminate/events": "^12.21"
     },
     "require-dev": {
         "pestphp/pest": "^3.8",
